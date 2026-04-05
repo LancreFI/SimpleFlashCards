@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">FlashCards</string>
+    <string name="add_wordlist">Add Wordlist</string>
+    <string name="help">Help</string>
+    <string name="your_flashcard_decks">Your Flashcard Decks</string>
+    <string name="name_your_deck">Name your deck</string>
+    <string name="vocab_hint">e.g. My Spanish Vocab</string>
+    <string name="json_url_or_file_path">JSON URL or File Path</string>
+    <string name="wordfile_hint">https://example.com/words.json</string>
+    <string name="word">Word</string>
+    <string name="_0_0">0 / 0</string>
+    <string name="restart">Restart</string>
+    <string name="ReturnMain">Main menu</string>
+    <string name="source_destination"><![CDATA[source -> destination]]></string>
+    <string name="lang_source">Source language</string>
+    <string name="lang_destination">Destination language</string>
+</resources>
