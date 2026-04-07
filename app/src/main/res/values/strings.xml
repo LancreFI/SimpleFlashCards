@@ -11,7 +11,7 @@
     <string name="_0_0">0 / 0</string>
     <string name="restart">Restart</string>
     <string name="ReturnMain">Main menu</string>
-    <string name="source_destination"><![CDATA[source -> destination]]></string>
     <string name="lang_source">Source language</string>
     <string name="lang_destination">Destination language</string>
+    <string name="lang_arrow">&#160;&#160;—></string>
 </resources>
