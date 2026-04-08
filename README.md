@@ -12,19 +12,36 @@ Just create your wordlists.json for flashcards in the following format:
 	} 
 }
 
-You can add the wordlists from a remote server by entering the URL for the list or import a local copy.
+You can add the wordlists from a remote server by entering the URL for the list or import a local 
+copy.
 
-After you've added a wordlist, you can long press the list name, to access the related functionalities.
+After you've added a wordlist, you can long press the list name, to access the related 
+functionalities.
 	
-Just some quick vibe coding project as my notebook for my current language studies is falling apart already.
+Just some quick vibe coding project as my notebook for my current language studies is falling apart 
+already.
 </pre>
 
 ----
+
+<pre>
+Update 080426:
+	Added: 
+		-added the option to go through the words in the order they were added or by random
+		-added the option to browse the words backward/forward
+        -added the option to swap the source and destination languages around
+        -added word tagging, where you can tag/star a word, which will pick it up to a separate
+         review list, so if you have problems remembering only certain words, you can now easily 
+         pick them to a list of their own to practice on.
+         This list is also editable and has all the same functionalities the "normal" word lists 
+         have
+</pre>
 
 <pre>
 Update 070426:
 	Added: 
 		-add/remove words from wordlist
 		-share/export wordlists
-	Fixed: some bugs in positioning the elements in widescreen mode. NOTE: rotating screen resets the current flashcard set progress.
+	Fixed: Some bugs in positioning the elements in widescreen mode. NOTE: rotating screen resets 
+           the current flashcard set progress.
 </pre>
