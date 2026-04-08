@@ -41,6 +41,11 @@ class MainActivity : AppCompatActivity() {
         loadDecksFromStorage()
     }
 
+    override fun onResume() {
+        super.onResume()
+        loadDecksFromStorage()
+    }
+
     private fun showHelp() {
         AlertDialog.Builder(this)
             .setTitle("JSON Format")
@@ -176,9 +181,7 @@ class MainActivity : AppCompatActivity() {
             val btn = MaterialButton(this).apply {
                 text = name
                 setOnClickListener {
-                    val intent = Intent(this@MainActivity, FlashcardActivity::class.java)
-                    intent.putExtra("JSON_DATA", json as String)
-                    startActivity(intent)
+                    showOrderDialog(name, json as String)
                 }
                 setOnLongClickListener {
                     showDeckOptions(name)
@@ -187,6 +190,21 @@ class MainActivity : AppCompatActivity() {
             }
             binding.deckListContainer.addView(btn)
         }
+    }
+
+    private fun showOrderDialog(name: String, json: String) {
+        val options = arrayOf("In Order", "Random")
+        AlertDialog.Builder(this)
+            .setTitle("Select Study Mode")
+            .setItems(options) { _, which ->
+                val intent = Intent(this, FlashcardActivity::class.java).apply {
+                    putExtra("DECK_NAME", name)
+                    putExtra("JSON_DATA", json)
+                    putExtra("IS_RANDOM", which == 1)
+                }
+                startActivity(intent)
+            }
+            .show()
     }
 
     private fun showDeckOptions(name: String) {

@@ -18,14 +18,17 @@ class FlashcardActivity : AppCompatActivity() {
     private var isFlipped = false
     private var sourceLang: String = ""
     private var destLang: String = ""
+    private var deckName: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityFlashcardBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        deckName = intent.getStringExtra("DECK_NAME") ?: ""
         val json = intent.getStringExtra("JSON_DATA") ?: ""
-        setupDeck(json)
+        val isRandom = intent.getBooleanExtra("IS_RANDOM", false)
+        setupDeck(json, isRandom)
 
         binding.btnRestart.setOnClickListener {
             index = 0
@@ -40,7 +43,41 @@ class FlashcardActivity : AppCompatActivity() {
             finish()
         }
         binding.btnReturnMain.visibility = View.VISIBLE
-        
+
+        binding.btnSwitch.setOnClickListener {
+            // Swap labels
+            val temp = sourceLang
+            sourceLang = destLang
+            destLang = temp
+
+            // Swap words in deck
+            deck = deck.map { Card(it.back, it.front) }
+            
+            updateDisplay()
+        }
+
+        binding.btnNext.setOnClickListener {
+            if (index < deck.size - 1) {
+                index++
+                isFlipped = false
+                updateDisplay()
+            } else {
+                Toast.makeText(this, "End of deck", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        binding.btnPrevious.setOnClickListener {
+            if (index > 0) {
+                index--
+                isFlipped = false
+                updateDisplay()
+            }
+        }
+
+        binding.btnStar.setOnClickListener {
+            starCurrentWord()
+        }
+
         binding.cardView.setOnClickListener {
             if (deck.isEmpty()) return@setOnClickListener
 
@@ -56,8 +93,8 @@ class FlashcardActivity : AppCompatActivity() {
                 binding.tvLanguageDst.setTypeface(null, Typeface.BOLD)
                 binding.tvLanguageDst.paintFlags = binding.tvLanguageDst.paintFlags or Paint.UNDERLINE_TEXT_FLAG
             } else {
-                index++
-                if (index < deck.size) {
+                if (index < deck.size - 1) {
+                    index++
                     isFlipped = false
                     updateDisplay()
                 } else {
@@ -67,13 +104,15 @@ class FlashcardActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupDeck(json: String) {
+    private fun setupDeck(json: String, isRandom: Boolean) {
         try {
             val data = Gson().fromJson(json, WordList::class.java)
             sourceLang = data.source ?: ""
             destLang = data.dest ?: ""
 
-            deck = data.words?.map { Card(it.key, it.value) }?.shuffled() ?: emptyList()
+            val words = data.words?.map { Card(it.key, it.value) } ?: emptyList()
+            deck = if (isRandom) words.shuffled() else words
+
             if (deck.isNotEmpty()) {
                 updateDisplay()
             } else {
@@ -85,12 +124,36 @@ class FlashcardActivity : AppCompatActivity() {
         }
     }
 
+    private fun starCurrentWord() {
+        val currentCard = deck[index]
+        val reviewDeckName = "Words to review: $deckName"
+        val prefs = getSharedPreferences("Decks", MODE_PRIVATE)
+        val gson = Gson()
+
+        val existingJson = prefs.getString(reviewDeckName, null)
+        val wordList = if (existingJson != null) {
+            gson.fromJson(existingJson, WordList::class.java)
+        } else {
+            WordList(sourceLang, destLang, mutableMapOf())
+        }
+
+        val words = wordList.words?.toMutableMap() ?: mutableMapOf()
+        words[currentCard.front] = currentCard.back
+        
+        val updatedList = WordList(wordList.source, wordList.dest, words)
+        prefs.edit().putString(reviewDeckName, gson.toJson(updatedList)).apply()
+        
+        Toast.makeText(this, "Added to review list", Toast.LENGTH_SHORT).show()
+        binding.btnStar.setImageResource(android.R.drawable.btn_star_big_on)
+    }
+
     @SuppressLint("SetTextI18n")
     private fun updateDisplay() {
         binding.tvCounter.text = "${index + 1} / ${deck.size}"
         binding.tvLanguageSrc.text = sourceLang
         binding.tvLanguageDst.text = destLang
         binding.tvWord.text = deck[index].front
+        binding.btnStar.setImageResource(android.R.drawable.btn_star_big_off)
 
         // Default bolding for source
         binding.tvLanguageSrc.setTypeface(null, Typeface.BOLD)
