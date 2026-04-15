@@ -54,15 +54,51 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showAddOptions() {
-        val options = arrayOf("Download from URL", "Select Local File")
+        val options = arrayOf("Download from URL", "Select Local File", "Create Empty Wordlist")
         AlertDialog.Builder(this)
             .setTitle("Add Wordlist")
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> showDownloadDialog()
                     1 -> pickFileLauncher.launch("application/json")
+                    2 -> showCreateEmptyDeckDialog()
                 }
             }
+            .show()
+    }
+
+    private fun showCreateEmptyDeckDialog() {
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(60, 20, 60, 0)
+        }
+        val nameInput = EditText(this).apply { hint = "Deck Name" }
+        val sourceInput = EditText(this).apply { hint = "Source Language" }
+        val destInput = EditText(this).apply { hint = "Destination Language" }
+        layout.addView(nameInput)
+        layout.addView(sourceInput)
+        layout.addView(destInput)
+
+        AlertDialog.Builder(this)
+            .setTitle("Create Empty Wordlist")
+            .setView(layout)
+            .setPositiveButton("Create") { _, _ ->
+                val name = nameInput.text.toString().trim()
+                val source = sourceInput.text.toString().trim()
+                val dest = destInput.text.toString().trim()
+                
+                if (name.isEmpty() || source.isEmpty() || dest.isEmpty()) {
+                    Toast.makeText(this, "All fields are required", Toast.LENGTH_SHORT).show()
+                } else if (prefs.contains(name)) {
+                    Toast.makeText(this, "Deck already exists", Toast.LENGTH_SHORT).show()
+                } else {
+                    val emptyList = WordList(source, dest, emptyMap())
+                    prefs.edit().putString(name, gson.toJson(emptyList)).apply()
+                    loadDecksFromStorage()
+                    Toast.makeText(this, "Deck '$name' created!", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
             .show()
     }
 
@@ -177,11 +213,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadDecksFromStorage() {
         binding.deckListContainer.removeAllViews()
-        prefs.all.forEach { (name, json) ->
+        prefs.all.keys.sorted().forEach { name ->
             val btn = MaterialButton(this).apply {
                 text = name
                 setOnClickListener {
-                    showOrderDialog(name, json as String)
+                    val currentJson = prefs.getString(name, null) ?: return@setOnClickListener
+                    showOrderDialog(name, currentJson)
                 }
                 setOnLongClickListener {
                     showDeckOptions(name)
@@ -208,29 +245,71 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showDeckOptions(name: String) {
-        val options = arrayOf("Add Word", "Remove Word", "Rename", "Export (Save to file)", "Share", "Delete")
+        val options = arrayOf("Add Word", "Remove Word", "Search Word", "Rename", "Export (Save to file)", "Share", "Delete")
         AlertDialog.Builder(this)
             .setTitle("Options for $name")
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> showAddWordDialog(name)
                     1 -> showRemoveWordDialog(name)
-                    2 -> showRenameDialog(name)
-                    3 -> {
+                    2 -> showSearchWordDialog(name)
+                    3 -> showRenameDialog(name)
+                    4 -> {
                         exportJson = prefs.getString(name, null)
                         if (exportJson != null) {
                             createDocumentLauncher.launch("$name.json")
                         }
                     }
-                    4 -> {
+                    5 -> {
                         val json = prefs.getString(name, null)
                         if (json != null) {
                             shareDeck(name, json)
                         }
                     }
-                    5 -> showDeleteConfirmation(name)
+                    6 -> showDeleteConfirmation(name)
                 }
             }
+            .show()
+    }
+
+    private fun showSearchWordDialog(deckName: String) {
+        val json = prefs.getString(deckName, null) ?: return
+        val wordList = gson.fromJson(json, WordList::class.java)
+
+        val input = EditText(this).apply {
+            hint = "Search in source or destination language"
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Search in $deckName")
+            .setView(input)
+            .setPositiveButton("Search") { _, _ ->
+                val query = input.text.toString().trim()
+                if (query.isNotEmpty()) {
+                    showSearchResults(deckName, wordList, query)
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showSearchResults(deckName: String, wordList: WordList, query: String) {
+        val words = wordList.words ?: emptyMap()
+        val results = words.filter { 
+            it.key.contains(query, ignoreCase = true) || it.value.contains(query, ignoreCase = true) 
+        }
+
+        if (results.isEmpty()) {
+            Toast.makeText(this, "No matches found for '$query'", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val resultsList = results.entries.map { "${it.key} -> ${it.value}" }.toTypedArray()
+        
+        AlertDialog.Builder(this)
+            .setTitle("Search Results for '$query'")
+            .setItems(resultsList, null)
+            .setPositiveButton("OK", null)
             .show()
     }
 
@@ -275,7 +354,8 @@ class MainActivity : AppCompatActivity() {
                 
                 val updatedList = WordList(wordList.source, wordList.dest, updatedWords)
                 val updatedJson = gson.toJson(updatedList)
-                prefs.edit().putString(deckName, updatedJson).apply()
+                prefs.edit().putString(deckName, updatedJson).commit()
+                loadDecksFromStorage()
                 Toast.makeText(this, "Items removed from $deckName", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Cancel", null)
@@ -368,7 +448,8 @@ class MainActivity : AppCompatActivity() {
         // Lint check / Validation
         val sanitizedJson = validateAndSanitizeJson(updatedJson)
         if (sanitizedJson != null) {
-            prefs.edit().putString(deckName, sanitizedJson).apply()
+            prefs.edit().putString(deckName, sanitizedJson).commit()
+            loadDecksFromStorage()
             Toast.makeText(this, "Word added to $deckName", Toast.LENGTH_SHORT).show()
         } else {
             Toast.makeText(this, "Failed to update deck: Invalid structure", Toast.LENGTH_LONG).show()

@@ -76,18 +76,33 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/llLanguages" />
 
-            <ImageButton
-                android:id="@+id/btnStar"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+            <LinearLayout
+                android:id="@+id/llActions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:layout_margin="8dp"
-                android:layout_marginTop="160dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/star_word"
-                android:src="@android:drawable/btn_star_big_off"
-                app:layout_constraintEnd_toEndOf="@id/tvWord"
-                app:layout_constraintStart_toStartOf="@id/tvWord"
-                app:layout_constraintTop_toTopOf="@id/tvWord" />
+                android:orientation="horizontal"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <ImageButton
+                    android:id="@+id/btnStar"
+                    android:layout_marginTop="32dp"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/star_word"
+                    android:src="@android:drawable/btn_star_big_off" />
+
+                <ImageButton
+                    android:id="@+id/btnDelete"
+                    android:layout_marginTop="32dp"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/delete_word"
+                    android:src="@android:drawable/ic_menu_delete" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/tvWord"

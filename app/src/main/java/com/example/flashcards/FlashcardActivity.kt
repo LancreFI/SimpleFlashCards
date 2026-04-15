@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AlertDialog
 import com.example.flashcards.databinding.ActivityFlashcardBinding
 import com.google.gson.Gson
 
@@ -19,6 +20,7 @@ class FlashcardActivity : AppCompatActivity() {
     private var sourceLang: String = ""
     private var destLang: String = ""
     private var deckName: String = ""
+    private var isRandom: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,13 +29,15 @@ class FlashcardActivity : AppCompatActivity() {
 
         deckName = intent.getStringExtra("DECK_NAME") ?: ""
         val json = intent.getStringExtra("JSON_DATA") ?: ""
-        val isRandom = intent.getBooleanExtra("IS_RANDOM", false)
+        isRandom = intent.getBooleanExtra("IS_RANDOM", false)
         setupDeck(json, isRandom)
 
         binding.btnRestart.setOnClickListener {
             index = 0
             isFlipped = false
-            deck = deck.shuffled()
+            val data = Gson().fromJson(json, WordList::class.java)
+            val words = data.words?.map { Card(it.key, it.value) } ?: emptyList()
+            deck = if (isRandom) words.shuffled() else words
             binding.btnRestart.visibility = View.GONE
             updateDisplay()
         }
@@ -76,6 +80,10 @@ class FlashcardActivity : AppCompatActivity() {
 
         binding.btnStar.setOnClickListener {
             starCurrentWord()
+        }
+
+        binding.btnDelete.setOnClickListener {
+            showDeleteWordDialog()
         }
 
         binding.cardView.setOnClickListener {
@@ -125,30 +133,62 @@ class FlashcardActivity : AppCompatActivity() {
     }
 
     private fun starCurrentWord() {
+        // ... (existing code)
+    }
+
+    private fun showDeleteWordDialog() {
+        if (deck.isEmpty()) return
         val currentCard = deck[index]
-        val reviewDeckName = "Words to review: $deckName"
+        AlertDialog.Builder(this)
+            .setTitle("Delete Word")
+            .setMessage("Are you sure you want to delete '${currentCard.front}' from '$deckName'?")
+            .setPositiveButton("Delete") { _, _ ->
+                deleteCurrentWord()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun deleteCurrentWord() {
         val prefs = getSharedPreferences("Decks", MODE_PRIVATE)
+        val json = prefs.getString(deckName, null) ?: return
         val gson = Gson()
-
-        val existingJson = prefs.getString(reviewDeckName, null)
-        val wordList = if (existingJson != null) {
-            gson.fromJson(existingJson, WordList::class.java)
-        } else {
-            WordList(sourceLang, destLang, mutableMapOf())
-        }
-
+        val wordList = gson.fromJson(json, WordList::class.java)
+        
         val words = wordList.words?.toMutableMap() ?: mutableMapOf()
-        words[currentCard.front] = currentCard.back
+        val currentCard = deck[index]
         
-        val updatedList = WordList(wordList.source, wordList.dest, words)
-        prefs.edit().putString(reviewDeckName, gson.toJson(updatedList)).apply()
-        
-        Toast.makeText(this, "Added to review list", Toast.LENGTH_SHORT).show()
-        binding.btnStar.setImageResource(android.R.drawable.btn_star_big_on)
+        // Find the key in the original wordList to remove
+        // We need to be careful if languages were switched
+        val keyToRemove = wordList.words?.entries?.find { 
+            (it.key == currentCard.front && it.value == currentCard.back) ||
+            (it.key == currentCard.back && it.value == currentCard.front)
+        }?.key
+
+        if (keyToRemove != null) {
+            words.remove(keyToRemove)
+            val updatedList = WordList(wordList.source, wordList.dest, words)
+            prefs.edit().putString(deckName, gson.toJson(updatedList)).apply()
+            
+            val mutableDeck = deck.toMutableList()
+            mutableDeck.removeAt(index)
+            deck = mutableDeck
+
+            if (deck.isEmpty()) {
+                Toast.makeText(this, "Deck is now empty", Toast.LENGTH_SHORT).show()
+                finish()
+            } else {
+                if (index >= deck.size) index = deck.size - 1
+                isFlipped = false
+                updateDisplay()
+                Toast.makeText(this, "Word deleted", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     @SuppressLint("SetTextI18n")
     private fun updateDisplay() {
+        if (deck.isEmpty()) return
         binding.tvCounter.text = "${index + 1} / ${deck.size}"
         binding.tvLanguageSrc.text = sourceLang
         binding.tvLanguageDst.text = destLang

@@ -16,6 +16,7 @@
     <string name="lang_arrow">&#160;&#160;—></string>
     <string name="btnSwitch">Switch</string>
     <string name="star_word">Star word</string>
+    <string name="delete_word">Delete word</string>
     <string name="arrow_left">&#160;&lt;—&#160;</string>
     <string name="arrow_right">&#160;—>&#160;</string>
 </resources>

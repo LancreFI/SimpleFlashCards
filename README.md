@@ -23,6 +23,15 @@ already.
 </pre>
 
 ----
+<pre>
+Update 150426:
+	Added: 
+		-added the option to create an empty wordlist when adding a new wordlist
+		-added the possibility to delete words during the flashcard activity
+        -added the option to search for words from a wordlist, matching partials too
+    Fixed:
+        -word order resetting from "in order" to "random" when restarting a flashcard activity
+</pre>
 
 <pre>
 Update 080426:
