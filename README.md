@@ -24,6 +24,13 @@ already.
 
 ----
 <pre>
+Update 170426:
+    Fixed:
+        -the flash cards won't reset when screen is rotated
+        -the adding of words to a review list using the star-icon works again
+</pre>
+
+<pre>
 Update 150426:
 	Added: 
 		-added the option to create an empty wordlist when adding a new wordlist

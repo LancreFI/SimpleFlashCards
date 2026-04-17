@@ -48,8 +48,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun showHelp() {
         AlertDialog.Builder(this)
-            .setTitle("JSON Format")
-            .setMessage("File must be formatted as:\n\n{\n \"source language\": \"English\",\n \"destination language\": \"Finnish\",\n \"words\": {\"apple\": \"omena\", \n                   \"uncle\": \"setä\"}\n}")
+            .setTitle("Quick Help")
+            .setMessage("You can perform actions on word lists by long pressing on the list name.\n\nWhen importing or creating the JSON file it must be formatted as:\n\n{\n \"source language\": \"English\",\n \"destination language\": \"Finnish\",\n \"words\": {\"apple\": \"omena\", \n                   \"uncle\": \"setä\"}\n}")
             .setPositiveButton("OK", null).show()
     }
 

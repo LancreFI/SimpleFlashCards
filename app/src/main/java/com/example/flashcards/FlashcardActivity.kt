@@ -133,7 +133,28 @@ class FlashcardActivity : AppCompatActivity() {
     }
 
     private fun starCurrentWord() {
-        // ... (existing code)
+        if (deck.isEmpty()) return
+        val currentCard = deck[index]
+        val prefs = getSharedPreferences("Decks", MODE_PRIVATE)
+        val starredDeckName = "Review: $deckName"
+        
+        val json = prefs.getString(starredDeckName, null)
+        val gson = Gson()
+        
+        val starredList = if (json != null) {
+            gson.fromJson(json, WordList::class.java)
+        } else {
+            WordList(sourceLang, destLang, mutableMapOf())
+        }
+        
+        val words = starredList.words?.toMutableMap() ?: mutableMapOf()
+        words[currentCard.front] = currentCard.back
+        
+        val updatedList = WordList(starredList.source ?: sourceLang, starredList.dest ?: destLang, words)
+        prefs.edit().putString(starredDeckName, gson.toJson(updatedList)).apply()
+        
+        binding.btnStar.setImageResource(android.R.drawable.btn_star_big_on)
+        Toast.makeText(this, "Added to $starredDeckName", Toast.LENGTH_SHORT).show()
     }
 
     private fun showDeleteWordDialog() {
