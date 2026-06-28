@@ -5,11 +5,14 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import android.os.Bundle
 import android.view.View
+import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AlertDialog
 import com.example.flashcards.databinding.ActivityFlashcardBinding
 import com.google.gson.Gson
+import androidx.core.content.edit
 
 
 class FlashcardActivity : AppCompatActivity() {
@@ -38,15 +41,13 @@ class FlashcardActivity : AppCompatActivity() {
             val data = Gson().fromJson(json, WordList::class.java)
             val words = data.words?.map { Card(it.key, it.value) } ?: emptyList()
             deck = if (isRandom) words.shuffled() else words
-            binding.btnRestart.visibility = View.GONE
+            binding.btnRestart.visibility = View.INVISIBLE
             updateDisplay()
         }
 
-        binding.btnReturnMain.setOnClickListener {
-            binding.btnRestart.visibility = View.GONE
+        binding.btnHome.setOnClickListener {
             finish()
         }
-        binding.btnReturnMain.visibility = View.VISIBLE
 
         binding.btnSwitch.setOnClickListener {
             // Swap labels
@@ -80,6 +81,10 @@ class FlashcardActivity : AppCompatActivity() {
 
         binding.btnStar.setOnClickListener {
             starCurrentWord()
+        }
+
+        binding.btnEdit.setOnClickListener {
+            showEditWordDialog()
         }
 
         binding.btnDelete.setOnClickListener {
@@ -151,10 +156,80 @@ class FlashcardActivity : AppCompatActivity() {
         words[currentCard.front] = currentCard.back
         
         val updatedList = WordList(starredList.source ?: sourceLang, starredList.dest ?: destLang, words)
-        prefs.edit().putString(starredDeckName, gson.toJson(updatedList)).apply()
+        prefs.edit { putString(starredDeckName, gson.toJson(updatedList)) }
         
         binding.btnStar.setImageResource(android.R.drawable.btn_star_big_on)
         Toast.makeText(this, "Added to $starredDeckName", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun showEditWordDialog() {
+        if (deck.isEmpty()) return
+        val currentCard = deck[index]
+        
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(60, 20, 60, 0)
+        }
+        val frontInput = EditText(this).apply { 
+            hint = "Word ($sourceLang)"
+            setText(currentCard.front)
+        }
+        val backInput = EditText(this).apply { 
+            hint = "Translation ($destLang)"
+            setText(currentCard.back)
+        }
+        layout.addView(frontInput)
+        layout.addView(backInput)
+
+        AlertDialog.Builder(this)
+            .setTitle("Edit Word")
+            .setView(layout)
+            .setPositiveButton("Save") { _, _ ->
+                val newFront = frontInput.text.toString().trim()
+                val newBack = backInput.text.toString().trim()
+                if (newFront.isNotEmpty() && newBack.isNotEmpty()) {
+                    updateWordInStorage(currentCard, newFront, newBack)
+                } else {
+                    Toast.makeText(this, "Fields cannot be empty", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun updateWordInStorage(oldCard: Card, newFront: String, newBack: String) {
+        val prefs = getSharedPreferences("Decks", MODE_PRIVATE)
+        val json = prefs.getString(deckName, null) ?: return
+        val gson = Gson()
+        val wordList = gson.fromJson(json, WordList::class.java)
+        
+        val words = wordList.words?.toMutableMap() ?: mutableMapOf()
+        
+        // Find the original key to update
+        val keyToUpdate = wordList.words?.entries?.find { 
+            (it.key == oldCard.front && it.value == oldCard.back) ||
+            (it.key == oldCard.back && it.value == oldCard.front)
+        }?.key
+
+        if (keyToUpdate != null) {
+            words.remove(keyToUpdate)
+            // If the card was swapped in FlashcardActivity, we need to restore original mapping
+            // But since we are editing in the current view, we'll just save it as displayed
+            // However, the original wordList might have had them in a certain order.
+            // For simplicity, we save newFront as key and newBack as value.
+            words[newFront] = newBack
+            
+            val updatedList = WordList(wordList.source, wordList.dest, words)
+            prefs.edit { putString(deckName, gson.toJson(updatedList)) }
+            
+            val mutableDeck = deck.toMutableList()
+            mutableDeck[index] = Card(newFront, newBack)
+            deck = mutableDeck
+            
+            isFlipped = false
+            updateDisplay()
+            Toast.makeText(this, "Word updated", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun showDeleteWordDialog() {
@@ -189,7 +264,7 @@ class FlashcardActivity : AppCompatActivity() {
         if (keyToRemove != null) {
             words.remove(keyToRemove)
             val updatedList = WordList(wordList.source, wordList.dest, words)
-            prefs.edit().putString(deckName, gson.toJson(updatedList)).apply()
+            prefs.edit { putString(deckName, gson.toJson(updatedList)) }
             
             val mutableDeck = deck.toMutableList()
             mutableDeck.removeAt(index)

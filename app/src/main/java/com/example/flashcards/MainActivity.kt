@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.URL
+import androidx.core.content.edit
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -93,7 +94,7 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this, "Deck already exists", Toast.LENGTH_SHORT).show()
                 } else {
                     val emptyList = WordList(source, dest, emptyMap())
-                    prefs.edit().putString(name, gson.toJson(emptyList)).apply()
+                    prefs.edit { putString(name, gson.toJson(emptyList)) }
                     loadDecksFromStorage()
                     Toast.makeText(this, "Deck '$name' created!", Toast.LENGTH_SHORT).show()
                 }
@@ -165,7 +166,7 @@ class MainActivity : AppCompatActivity() {
         val validatedJson = validateAndSanitizeJson(json)
         withContext(Dispatchers.Main) {
             if (validatedJson != null) {
-                prefs.edit().putString(name, validatedJson).apply()
+                prefs.edit { putString(name, validatedJson) }
                 loadDecksFromStorage()
                 Toast.makeText(this@MainActivity, "Deck '$name' added!", Toast.LENGTH_SHORT).show()
             } else {
@@ -245,30 +246,109 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showDeckOptions(name: String) {
-        val options = arrayOf("Add Word", "Remove Word", "Search Word", "Rename", "Export (Save to file)", "Share", "Delete")
+        val options = arrayOf("Add Word", "Edit Word", "Remove Word", "Search Word", "Rename", "Export (Save to file)", "Share", "Delete")
         AlertDialog.Builder(this)
             .setTitle("Options for $name")
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> showAddWordDialog(name)
-                    1 -> showRemoveWordDialog(name)
-                    2 -> showSearchWordDialog(name)
-                    3 -> showRenameDialog(name)
-                    4 -> {
+                    1 -> showEditWordSearchDialog(name)
+                    2 -> showRemoveWordDialog(name)
+                    3 -> showSearchWordDialog(name)
+                    4 -> showRenameDialog(name)
+                    5 -> {
                         exportJson = prefs.getString(name, null)
                         if (exportJson != null) {
                             createDocumentLauncher.launch("$name.json")
                         }
                     }
-                    5 -> {
+                    6 -> {
                         val json = prefs.getString(name, null)
                         if (json != null) {
                             shareDeck(name, json)
                         }
                     }
-                    6 -> showDeleteConfirmation(name)
+                    7 -> showDeleteConfirmation(name)
                 }
             }
+            .show()
+    }
+
+    private fun showEditWordSearchDialog(deckName: String) {
+        val json = prefs.getString(deckName, null) ?: return
+        val wordList = gson.fromJson(json, WordList::class.java)
+        val sourceLang = wordList.source ?: "Key"
+        val destLang = wordList.dest ?: "Value"
+
+        val input = EditText(this).apply {
+            hint = "Search word to edit ($sourceLang or $destLang)"
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Edit Word in $deckName")
+            .setView(input)
+            .setPositiveButton("Search") { _, _ ->
+                val query = input.text.toString().trim()
+                if (query.isEmpty()) return@setPositiveButton
+
+                val words = wordList.words ?: emptyMap()
+                val matches = words.filter { it.key.equals(query, ignoreCase = true) || it.value.equals(query, ignoreCase = true) }
+
+                if (matches.size == 1) {
+                    val entry = matches.entries.first()
+                    showActualEditDialog(deckName, wordList, entry.key, entry.value)
+                } else if (matches.size > 1) {
+                    val matchItems = matches.entries.map { "${it.key} -> ${it.value}" }.toTypedArray()
+                    AlertDialog.Builder(this)
+                        .setTitle("Select word to edit")
+                        .setItems(matchItems) { _, whichIndex ->
+                            val selected = matches.entries.elementAt(whichIndex)
+                            showActualEditDialog(deckName, wordList, selected.key, selected.value)
+                        }
+                        .show()
+                } else {
+                    Toast.makeText(this, "No matches found", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showActualEditDialog(deckName: String, wordList: WordList, oldKey: String, oldValue: String) {
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(60, 20, 60, 0)
+        }
+        val keyInput = EditText(this).apply { 
+            hint = "Word (${wordList.source})"
+            setText(oldKey)
+        }
+        val valueInput = EditText(this).apply { 
+            hint = "Translation (${wordList.dest})"
+            setText(oldValue)
+        }
+        layout.addView(keyInput)
+        layout.addView(valueInput)
+
+        AlertDialog.Builder(this)
+            .setTitle("Edit Word")
+            .setView(layout)
+            .setPositiveButton("Save") { _, _ ->
+                val newKey = keyInput.text.toString().trim()
+                val newValue = valueInput.text.toString().trim()
+                
+                if (newKey.isNotEmpty() && newValue.isNotEmpty()) {
+                    val updatedWords = wordList.words?.toMutableMap() ?: mutableMapOf()
+                    updatedWords.remove(oldKey)
+                    updatedWords[newKey] = newValue
+                    
+                    val updatedList = WordList(wordList.source, wordList.dest, updatedWords)
+                    prefs.edit(commit = true) { putString(deckName, gson.toJson(updatedList)) }
+                    loadDecksFromStorage()
+                    Toast.makeText(this, "Word updated", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
             .show()
     }
 
@@ -286,14 +366,14 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Search") { _, _ ->
                 val query = input.text.toString().trim()
                 if (query.isNotEmpty()) {
-                    showSearchResults(deckName, wordList, query)
+                    showSearchResults(wordList, query)
                 }
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
 
-    private fun showSearchResults(deckName: String, wordList: WordList, query: String) {
+    private fun showSearchResults(wordList: WordList, query: String) {
         val words = wordList.words ?: emptyMap()
         val results = words.filter { 
             it.key.contains(query, ignoreCase = true) || it.value.contains(query, ignoreCase = true) 
@@ -354,7 +434,7 @@ class MainActivity : AppCompatActivity() {
                 
                 val updatedList = WordList(wordList.source, wordList.dest, updatedWords)
                 val updatedJson = gson.toJson(updatedList)
-                prefs.edit().putString(deckName, updatedJson).commit()
+                prefs.edit(commit = true) { putString(deckName, updatedJson) }
                 loadDecksFromStorage()
                 Toast.makeText(this, "Items removed from $deckName", Toast.LENGTH_SHORT).show()
             }
@@ -448,7 +528,7 @@ class MainActivity : AppCompatActivity() {
         // Lint check / Validation
         val sanitizedJson = validateAndSanitizeJson(updatedJson)
         if (sanitizedJson != null) {
-            prefs.edit().putString(deckName, sanitizedJson).commit()
+            prefs.edit(commit = true) { putString(deckName, sanitizedJson) }
             loadDecksFromStorage()
             Toast.makeText(this, "Word added to $deckName", Toast.LENGTH_SHORT).show()
         } else {
@@ -497,7 +577,7 @@ class MainActivity : AppCompatActivity() {
                 val newName = nameInput.text.toString()
                 if (newName.isNotEmpty() && newName != oldName) {
                     val json = prefs.getString(oldName, null)
-                    prefs.edit().remove(oldName).putString(newName, json).apply()
+                    prefs.edit { remove(oldName).putString(newName, json) }
                     loadDecksFromStorage()
                 }
             }
@@ -510,7 +590,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Delete Deck")
             .setMessage("Are you sure you want to delete '$name'?")
             .setPositiveButton("Delete") { _, _ ->
-                prefs.edit().remove(name).apply()
+                prefs.edit { remove(name) }
                 loadDecksFromStorage()
             }
             .setNegativeButton("Cancel", null)

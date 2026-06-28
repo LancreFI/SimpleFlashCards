@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="26dp">
+    android:paddingBottom="42dp"
+    android:paddingTop="32dp"
+    android:paddingLeft="10dp"
+    android:paddingRight="10dp">
 
     <TextView
         android:id="@+id/tvCounter"
@@ -23,7 +27,7 @@
         android:layout_marginBottom="8dp"
         app:cardCornerRadius="16dp"
         app:cardElevation="8dp"
-        app:layout_constraintBottom_toTopOf="@+id/btnReturnMain"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/tvCounter"
@@ -66,16 +70,6 @@
                     android:textSize="18sp" />
             </LinearLayout>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnSwitch"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/btnSwitch"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/llLanguages" />
-
             <LinearLayout
                 android:id="@+id/llActions"
                 android:layout_width="wrap_content"
@@ -84,6 +78,43 @@
                 android:orientation="horizontal"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent">
+
+                <ImageButton
+                    android:id="@+id/btnHome"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="32dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/ReturnMain"
+                    android:src="@drawable/ic_menu_home" />
+
+                <ImageButton
+                    android:id="@+id/btnRestart"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="32dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/restart"
+                    android:src="@android:drawable/ic_menu_rotate"
+                    android:visibility="invisible" />
+
+                <ImageButton
+                    android:id="@+id/btnSwitch"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="32dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/switch_language"
+                    android:src="@drawable/ic_swap" />
+
+                <ImageButton
+                    android:id="@+id/btnEdit"
+                    android:layout_marginTop="32dp"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/edit_word"
+                    android:src="@android:drawable/ic_menu_edit" />
 
                 <ImageButton
                     android:id="@+id/btnStar"
@@ -96,12 +127,13 @@
 
                 <ImageButton
                     android:id="@+id/btnDelete"
-                    android:layout_marginTop="32dp"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
+                    android:layout_marginTop="32dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/delete_word"
-                    android:src="@android:drawable/ic_menu_delete" />
+                    android:src="@android:drawable/ic_menu_delete"
+                    tools:ignore="ImageContrastCheck" />
             </LinearLayout>
 
             <TextView
@@ -116,7 +148,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHorizontal_bias="1.0"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/btnSwitch"
+                app:layout_constraintTop_toBottomOf="@+id/llActions"
                 app:layout_constraintVertical_bias="1.0" />
 
             <LinearLayout
@@ -149,30 +181,5 @@
         </androidx.constraintlayout.widget.ConstraintLayout>
 
     </com.google.android.material.card.MaterialCardView>
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnRestart"
-        style="@style/Widget.MaterialComponents.Button.TextButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:paddingBottom="24dp"
-        android:text="@string/restart"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/btnReturnMain"
-        app:layout_constraintHorizontal_chainStyle="packed"
-        app:layout_constraintStart_toStartOf="parent" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnReturnMain"
-        style="@style/Widget.MaterialComponents.Button.TextButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:paddingBottom="24dp"
-        android:text="@string/ReturnMain"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/btnRestart" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
