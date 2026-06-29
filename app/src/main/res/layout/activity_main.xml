@@ -1,16 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="42dp">
 
     <LinearLayout
+        style="?android:attr/buttonBarStyle"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="83dp"
         android:orientation="horizontal">
-        <Button android:id="@+id/btnAdd" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Add Wordlist" />
-        <Button android:id="@+id/btnHelp" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Help" />
+
+        <Button
+            android:id="@+id/btnAdd"
+            android:layout_width="97dp"
+            android:layout_height="65dp"
+            android:layout_weight="1"
+            android:text="@string/add_wordlist"
+            tools:ignore="ButtonStyle,VisualLintButtonSize" />
+
+        <Button
+            android:id="@+id/btnAddCharacters"
+            android:layout_width="106dp"
+            android:layout_height="66dp"
+            android:layout_weight="1"
+            android:text="@string/add_characters"
+            tools:ignore="ButtonStyle,VisualLintButtonSize" />
+
+        <Button
+            android:id="@+id/btnHelp"
+            android:layout_width="71dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxWidth="320dp"
+            android:text="@string/help"
+            tools:ignore="ButtonStyle,VisualLintButtonSize" />
     </LinearLayout>
 
     <ScrollView

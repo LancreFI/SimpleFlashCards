@@ -21,4 +21,22 @@
     <string name="arrow_left">&#160;&lt;—&#160;</string>
     <string name="arrow_right">&#160;—>&#160;</string>
     <string name="switch_language">Switch language</string>
+    <string name="add_characters">Add Characters</string>
+    <string name="character_name_e_g_a_hi">Character Name (e.g. \'a\', \'hi\')</string>
+    <string name="record_stroke_order">Record stroke order</string>
+    <string name="record_stroke_direction">Record stroke direction</string>
+    <string name="draw_character_below">Draw character below:</string>
+    <string name="character_thickness">Thickness:</string>
+    <string name="undo_character">Undo</string>
+    <string name="redo_character">Redo</string>
+    <string name="clear_character">Clear</string>
+    <string name="save_character">Save</string>
+    <string name="finish_and_return_character">Finish and Return</string>
+    <string name="draw_character_name">Draw: Character Name</string>
+    <string name="thickness_character">Thickness:</string>
+    <string name="clear_drawing">Clear</string>
+    <string name="check_character">Check</string>
+    <string name="next_character">Next</string>
+    <string name="restart_character_quiz">Restart</string>
+    <string name="exit_character">Exit</string>
 </resources>

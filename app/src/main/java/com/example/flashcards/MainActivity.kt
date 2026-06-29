@@ -22,10 +22,15 @@ import androidx.core.content.edit
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val prefs by lazy { getSharedPreferences("Decks", MODE_PRIVATE) }
+    private val charPrefs by lazy { getSharedPreferences("CharacterDecks", MODE_PRIVATE) }
     private val gson = Gson()
 
     private val pickFileLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let { handleFileUri(it) }
+    }
+
+    private val pickCharFileLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let { handleCharacterFileUri(it) }
     }
 
     private var exportJson: String? = null
@@ -39,7 +44,13 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         binding.btnHelp.setOnClickListener { showHelp() }
         binding.btnAdd.setOnClickListener { showAddOptions() }
+        binding.btnAddCharacters.setOnClickListener { showAddCharacterActivity() }
         loadDecksFromStorage()
+    }
+
+    private fun showAddCharacterActivity() {
+        val intent = Intent(this, AddCharacterActivity::class.java)
+        startActivity(intent)
     }
 
     override fun onResume() {
@@ -55,14 +66,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showAddOptions() {
-        val options = arrayOf("Download from URL", "Select Local File", "Create Empty Wordlist")
+        val options = arrayOf("Download from URL", "Select Local File", "Import Character Deck", "Create Empty Wordlist")
         AlertDialog.Builder(this)
             .setTitle("Add Wordlist")
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> showDownloadDialog()
                     1 -> pickFileLauncher.launch("application/json")
-                    2 -> showCreateEmptyDeckDialog()
+                    2 -> pickCharFileLauncher.launch("application/json")
+                    3 -> showCreateEmptyDeckDialog()
                 }
             }
             .show()
@@ -136,6 +148,34 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun handleCharacterFileUri(uri: Uri) {
+        val nicknameInput = EditText(this).apply { hint = "Character Deck Name" }
+        AlertDialog.Builder(this)
+            .setTitle("Enter Deck Name")
+            .setView(nicknameInput)
+            .setPositiveButton("Import") { _, _ ->
+                val name = nicknameInput.text.toString()
+                if (name.isNotEmpty()) {
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        try {
+                            val json = contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                            if (json != null) {
+                                withContext(Dispatchers.Main) {
+                                    charPrefs.edit { putString(name, json) }
+                                    loadDecksFromStorage()
+                                    Toast.makeText(this@MainActivity, "Character deck '$name' imported!", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(this@MainActivity, "Failed to read character file", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                }
+            }.show()
     }
 
     private fun handleFileUri(uri: Uri) {
@@ -214,12 +254,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadDecksFromStorage() {
         binding.deckListContainer.removeAllViews()
+        
+        // Load Word Decks
         prefs.all.keys.sorted().forEach { name ->
             val btn = MaterialButton(this).apply {
                 text = name
                 setOnClickListener {
                     val currentJson = prefs.getString(name, null) ?: return@setOnClickListener
-                    showOrderDialog(name, currentJson)
+                    showOrderDialog(name, currentJson, isCharacterDeck = false)
                 }
                 setOnLongClickListener {
                     showDeckOptions(name)
@@ -228,20 +270,76 @@ class MainActivity : AppCompatActivity() {
             }
             binding.deckListContainer.addView(btn)
         }
+
+        // Load Character Decks
+        charPrefs.all.keys.sorted().forEach { name ->
+            val btn = MaterialButton(this).apply {
+                text = "[Char] $name"
+                setOnClickListener {
+                    val currentJson = charPrefs.getString(name, null) ?: return@setOnClickListener
+                    showOrderDialog(name, currentJson, isCharacterDeck = true)
+                }
+                setOnLongClickListener {
+                    showCharacterDeckOptions(name)
+                    true
+                }
+            }
+            binding.deckListContainer.addView(btn)
+        }
     }
 
-    private fun showOrderDialog(name: String, json: String) {
+    private fun showOrderDialog(name: String, json: String, isCharacterDeck: Boolean) {
         val options = arrayOf("In Order", "Random")
         AlertDialog.Builder(this)
             .setTitle("Select Study Mode")
             .setItems(options) { _, which ->
-                val intent = Intent(this, FlashcardActivity::class.java).apply {
-                    putExtra("DECK_NAME", name)
-                    putExtra("JSON_DATA", json)
-                    putExtra("IS_RANDOM", which == 1)
+                val intent = if (isCharacterDeck) {
+                    Intent(this, DrawQuizActivity::class.java).apply {
+                        putExtra("CHAR_DECK_JSON", json)
+                    }
+                } else {
+                    Intent(this, FlashcardActivity::class.java).apply {
+                        putExtra("DECK_NAME", name)
+                        putExtra("JSON_DATA", json)
+                    }
                 }
+                intent.putExtra("IS_RANDOM", which == 1)
                 startActivity(intent)
             }
+            .show()
+    }
+
+    private fun showCharacterDeckOptions(name: String) {
+        val options = arrayOf("Add Character", "Export", "Delete")
+        AlertDialog.Builder(this)
+            .setTitle("Options for $name")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        val intent = Intent(this, AddCharacterActivity::class.java)
+                        startActivity(intent)
+                    }
+                    1 -> {
+                        exportJson = charPrefs.getString(name, null)
+                        if (exportJson != null) {
+                            createDocumentLauncher.launch("${name}_chars.json")
+                        }
+                    }
+                    2 -> showDeleteCharDeckConfirmation(name)
+                }
+            }
+            .show()
+    }
+
+    private fun showDeleteCharDeckConfirmation(name: String) {
+        AlertDialog.Builder(this)
+            .setTitle("Delete Character Deck")
+            .setMessage("Are you sure you want to delete '$name'?")
+            .setPositiveButton("Delete") { _, _ ->
+                charPrefs.edit { remove(name) }
+                loadDecksFromStorage()
+            }
+            .setNegativeButton("Cancel", null)
             .show()
     }
 

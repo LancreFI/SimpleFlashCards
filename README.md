@@ -24,6 +24,20 @@ already.
 
 ----
 <pre>
+Updates 28 and 290626:
+    -made some pretty icons instead of ugly text buttons on the flashcards
+     -added the icon for switching languages
+     -added the icon and capability to edit the words on the fly
+    -added the functionality of adding a hand drawn character
+     -also contains the ability to track the order of strokes for the character drawing
+      and the direction of the strokes
+     -handy for example in studying hiragana/katakana/kanji etc.
+    -the character quiz was added, where the user draws the character asked for and tries to get the
+     potential stroke order and direction correctly
+     -wrong guess will display an animation of how the character should be drawn
+</pre>
+
+<pre>
 Update 170426:
     Fixed:
         -the flash cards won't reset when screen is rotated
