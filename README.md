@@ -24,6 +24,11 @@ already.
 
 ----
 <pre>
+Updates 020726:
+    -fixed a crash bug in character drawing quiz and added home button
+</pre>
+
+<pre>
 Updates 28 and 290626:
     -made some pretty icons instead of ugly text buttons on the flashcards
      -added the icon for switching languages

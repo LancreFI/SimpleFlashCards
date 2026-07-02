@@ -20,7 +20,13 @@ class AddCharacterActivity : AppCompatActivity() {
         binding = ActivityAddCharacterBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        showDeckSelectionDialog()
+        val intentDeckName = intent.getStringExtra("DECK_NAME")
+        if (intentDeckName != null) {
+            currentDeckName = intentDeckName
+            loadDeck(intentDeckName)
+        } else {
+            showDeckSelectionDialog()
+        }
 
         binding.btnClear.setOnClickListener {
             binding.drawingView.clear()
@@ -92,13 +98,20 @@ class AddCharacterActivity : AppCompatActivity() {
 
     private fun loadDeck(name: String) {
         val json = prefs.getString(name, null)
+        characters.clear()
         if (json != null) {
-            val deck = gson.fromJson(json, CharacterDeck::class.java)
-            characters.addAll(deck.characters)
-            if (characters.isNotEmpty()) {
-                val lastWidth = characters.last().strokeWidth.toInt()
-                binding.sbThickness.progress = lastWidth
-                binding.drawingView.setStrokeWidth(lastWidth.toFloat())
+            try {
+                val deck = gson.fromJson(json, CharacterDeck::class.java)
+                if (deck?.characters != null) {
+                    characters.addAll(deck.characters)
+                }
+                if (characters.isNotEmpty()) {
+                    val lastWidth = characters.last().strokeWidth.toInt()
+                    binding.sbThickness.progress = lastWidth
+                    binding.drawingView.setStrokeWidth(lastWidth.toFloat())
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this, "Error loading deck", Toast.LENGTH_SHORT).show()
             }
         }
     }

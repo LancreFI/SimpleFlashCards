@@ -295,7 +295,7 @@ class MainActivity : AppCompatActivity() {
             .setItems(options) { _, which ->
                 val intent = if (isCharacterDeck) {
                     Intent(this, DrawQuizActivity::class.java).apply {
-                        putExtra("CHAR_DECK_JSON", json)
+                        putExtra("DECK_NAME", name)
                     }
                 } else {
                     Intent(this, FlashcardActivity::class.java).apply {
@@ -317,6 +317,7 @@ class MainActivity : AppCompatActivity() {
                 when (which) {
                     0 -> {
                         val intent = Intent(this, AddCharacterActivity::class.java)
+                        intent.putExtra("DECK_NAME", name)
                         startActivity(intent)
                     }
                     1 -> {

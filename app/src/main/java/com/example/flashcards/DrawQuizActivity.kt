@@ -20,12 +20,22 @@ class DrawQuizActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val json = intent.getStringExtra("CHAR_DECK_JSON")
-        if (json == null) {
+        val deckName = intent.getStringExtra("DECK_NAME")
+        
+        val deck = if (json != null) {
+            gson.fromJson(json, CharacterDeck::class.java)
+        } else if (deckName != null) {
+            val charPrefs = getSharedPreferences("CharacterDecks", MODE_PRIVATE)
+            val savedJson = charPrefs.getString(deckName, null)
+            if (savedJson != null) {
+                gson.fromJson(savedJson, CharacterDeck::class.java)
+            } else null
+        } else null
+
+        if (deck == null) {
             finish()
             return
         }
-
-        val deck = gson.fromJson(json, CharacterDeck::class.java)
         characters = if (intent.getBooleanExtra("IS_RANDOM", false)) {
             deck.characters.shuffled()
         } else {
@@ -33,6 +43,10 @@ class DrawQuizActivity : AppCompatActivity() {
         }
 
         showCurrentCharacter()
+
+        binding.btnHome.setOnClickListener {
+            finish()
+        }
 
         binding.btnClear.setOnClickListener {
             binding.drawingView.clear()
@@ -166,8 +180,12 @@ class DrawQuizActivity : AppCompatActivity() {
 
     private fun resample(stroke: DrawingStroke, n: Int): List<DrawingPoint> {
         if (stroke.points.size < 2) return stroke.points
-        val resampled = mutableListOf<DrawingPoint>()
         val totalLen = stroke.points.zipWithNext { a, b -> distance(a, b) }.sum()
+        if (totalLen <= 0f) {
+            return List(n) { stroke.points[0] }
+        }
+        
+        val resampled = mutableListOf<DrawingPoint>()
         val interval = totalLen / (n - 1)
         
         var currentDist = 0f
