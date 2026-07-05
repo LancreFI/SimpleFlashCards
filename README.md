@@ -24,6 +24,14 @@ already.
 
 ----
 <pre>
+Updates 050726:
+    -improved character validation accuracy using the Fréchet distance algorithm
+    -added Edit and Delete actions directly to the character quiz
+    -added Undo support to the character quiz drawing view
+    -increased the speed of the stroke animation for incorrect answers
+</pre>
+
+<pre>
 Updates 020726:
     -fixed a crash bug in character drawing quiz and added home button
 </pre>

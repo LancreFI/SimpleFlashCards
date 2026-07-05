@@ -88,11 +88,11 @@ class DrawingView(context: Context, attrs: AttributeSet?) : View(context, attrs)
             if (animatedPointIndex < stroke.points.size) {
                 animatedPointIndex++
                 invalidate()
-                postDelayed({ animateNextStep() }, 30) // Adjust speed here
+                postDelayed({ animateNextStep() }, 15) // Adjust speed here
             } else {
                 animatedStrokeIndex++
                 animatedPointIndex = 0
-                postDelayed({ animateNextStep() }, 200) // Pause between strokes
+                postDelayed({ animateNextStep() }, 100) // Pause between strokes
             }
         } else {
             isAnimating = false
@@ -133,6 +133,23 @@ class DrawingView(context: Context, attrs: AttributeSet?) : View(context, attrs)
     }
 
     fun getStrokes(): List<DrawingStroke> = normalizeStrokes(strokes)
+
+    fun setStrokes(inputStrokes: List<DrawingStroke>) {
+        val size = width.toFloat()
+        if (size <= 0) {
+            // If view not measured yet, post it
+            post { setStrokes(inputStrokes) }
+            return
+        }
+        val scale = size / 1000f
+        strokes.clear()
+        redoStrokes.clear()
+        strokes.addAll(inputStrokes.map { stroke ->
+            DrawingStroke(stroke.points.map { DrawingPoint(it.x * scale, it.y * scale) })
+        })
+        currentPath.reset()
+        invalidate()
+    }
 
     fun undo() {
         if (strokes.isNotEmpty()) {

@@ -39,4 +39,8 @@
     <string name="next_character">Next</string>
     <string name="restart_character_quiz">Restart</string>
     <string name="exit_character">Exit</string>
+    <string name="undo">Undo</string>
+    <string name="new_character">New Character</string>
+    <string name="lt"><![CDATA[<]]></string>
+    <string name="gt"><![CDATA[>]]></string>
 </resources>

@@ -4,14 +4,19 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AlertDialog
+import androidx.core.content.edit
 import com.example.flashcards.databinding.ActivityDrawQuizBinding
 import com.google.gson.Gson
 import kotlin.math.hypot
+import kotlin.math.max
+import kotlin.math.min
 
 class DrawQuizActivity : AppCompatActivity() {
     private lateinit var binding: ActivityDrawQuizBinding
-    private lateinit var characters: List<CharacterData>
+    private lateinit var characters: MutableList<CharacterData>
     private var currentIndex = 0
+    private var currentDeckName: String? = null
     private val gson = Gson()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,6 +26,7 @@ class DrawQuizActivity : AppCompatActivity() {
 
         val json = intent.getStringExtra("CHAR_DECK_JSON")
         val deckName = intent.getStringExtra("DECK_NAME")
+        currentDeckName = deckName
         
         val deck = if (json != null) {
             gson.fromJson(json, CharacterDeck::class.java)
@@ -37,9 +43,9 @@ class DrawQuizActivity : AppCompatActivity() {
             return
         }
         characters = if (intent.getBooleanExtra("IS_RANDOM", false)) {
-            deck.characters.shuffled()
+            deck.characters.shuffled().toMutableList()
         } else {
-            deck.characters
+            deck.characters.toMutableList()
         }
 
         showCurrentCharacter()
@@ -50,6 +56,22 @@ class DrawQuizActivity : AppCompatActivity() {
 
         binding.btnClear.setOnClickListener {
             binding.drawingView.clear()
+        }
+
+        binding.btnUndo.setOnClickListener {
+            binding.drawingView.undo()
+        }
+
+        binding.btnEdit.setOnClickListener {
+            val intent = android.content.Intent(this, AddCharacterActivity::class.java).apply {
+                putExtra("DECK_NAME", currentDeckName)
+                putExtra("EDIT_CHAR_NAME", characters[currentIndex].name)
+            }
+            startActivity(intent)
+        }
+
+        binding.btnDelete.setOnClickListener {
+            showDeleteConfirmation()
         }
 
         binding.sbThickness.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
@@ -72,7 +94,7 @@ class DrawQuizActivity : AppCompatActivity() {
         binding.btnRestart.setOnClickListener {
             currentIndex = 0
             if (intent.getBooleanExtra("IS_RANDOM", false)) {
-                characters = characters.shuffled()
+                characters = characters.shuffled().toMutableList()
             }
             showCurrentCharacter()
         }
@@ -83,6 +105,10 @@ class DrawQuizActivity : AppCompatActivity() {
     }
 
     private fun showCurrentCharacter() {
+        if (characters.isEmpty()) {
+            finish()
+            return
+        }
         val char = characters[currentIndex]
         binding.tvTargetName.text = "Draw: ${char.name}"
         binding.drawingView.clear()
@@ -91,11 +117,50 @@ class DrawQuizActivity : AppCompatActivity() {
         binding.drawingView.setStrokeWidth(char.strokeWidth)
         binding.sbThickness.progress = char.strokeWidth.toInt()
         
+        binding.btnUndo.isEnabled = true
         binding.btnClear.isEnabled = true
         binding.llQuizControls.visibility = View.VISIBLE
         binding.btnSubmit.visibility = View.VISIBLE
         binding.btnNext.visibility = View.GONE
         binding.llFinalOptions.visibility = View.GONE
+    }
+
+    private fun showDeleteConfirmation() {
+        val charName = characters[currentIndex].name
+        AlertDialog.Builder(this)
+            .setTitle("Delete Character")
+            .setMessage("Are you sure you want to delete '$charName'?")
+            .setPositiveButton("Delete") { _, _ ->
+                deleteCurrentCharacter()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun deleteCurrentCharacter() {
+        val deckName = currentDeckName ?: return
+        val charName = characters[currentIndex].name
+        
+        val charPrefs = getSharedPreferences("CharacterDecks", MODE_PRIVATE)
+        val savedJson = charPrefs.getString(deckName, null) ?: return
+        val deck = gson.fromJson(savedJson, CharacterDeck::class.java)
+        
+        val updatedChars = deck.characters.filter { it.name != charName }
+        val updatedDeck = CharacterDeck(deck.name, updatedChars)
+        
+        charPrefs.edit {
+            putString(deckName, gson.toJson(updatedDeck))
+        }
+        
+        characters.removeAt(currentIndex)
+        if (characters.isEmpty()) {
+            finish()
+        } else {
+            if (currentIndex >= characters.size) {
+                currentIndex = characters.size - 1
+            }
+            showCurrentCharacter()
+        }
     }
 
     private fun checkDrawing() {
@@ -109,6 +174,7 @@ class DrawQuizActivity : AppCompatActivity() {
             targetChar.checkStrokeDirection
         )
         
+        binding.btnUndo.isEnabled = false
         binding.btnClear.isEnabled = false
         binding.drawingView.isDrawingEnabled = false
 
@@ -167,15 +233,43 @@ class DrawQuizActivity : AppCompatActivity() {
         val resampledUser = resample(user, 32)
         val resampledTarget = resample(target, 32)
         
-        val threshold = 150f // Average distance threshold in 1000x1000 space
+        val threshold = 200f // Fréchet distance threshold in 1000x1000 space
         
-        val scoreNormal = calculateAverageDistance(resampledUser, resampledTarget)
+        val scoreNormal = calculateFrechetDistance(resampledUser, resampledTarget)
         if (checkDirection) {
             return scoreNormal < threshold
         }
         
-        val scoreReversed = calculateAverageDistance(resampledUser, resampledTarget.reversed())
+        val scoreReversed = calculateFrechetDistance(resampledUser, resampledTarget.reversed())
         return scoreNormal < threshold || scoreReversed < threshold
+    }
+
+    private fun calculateFrechetDistance(p1: List<DrawingPoint>, p2: List<DrawingPoint>): Float {
+        val n = p1.size
+        val m = p2.size
+        val dt = Array(n) { FloatArray(m) { -1f } }
+
+        fun recursiveFrechet(i: Int, j: Int): Float {
+            if (dt[i][j] > -1f) return dt[i][j]
+            
+            val d = distance(p1[i], p2[j])
+            dt[i][j] = when {
+                i == 0 && j == 0 -> d
+                i > 0 && j == 0 -> max(recursiveFrechet(i - 1, 0), d)
+                i == 0 && j > 0 -> max(recursiveFrechet(0, j - 1), d)
+                i > 0 && j > 0 -> max(
+                    min(
+                        min(recursiveFrechet(i - 1, j), recursiveFrechet(i - 1, j - 1)),
+                        recursiveFrechet(i, j - 1)
+                    ),
+                    d
+                )
+                else -> Float.MAX_VALUE
+            }
+            return dt[i][j]
+        }
+
+        return recursiveFrechet(n - 1, m - 1)
     }
 
     private fun resample(stroke: DrawingStroke, n: Int): List<DrawingPoint> {
@@ -213,10 +307,6 @@ class DrawQuizActivity : AppCompatActivity() {
         }
         while (resampled.size < n) resampled.add(stroke.points.last())
         return resampled
-    }
-
-    private fun calculateAverageDistance(p1: List<DrawingPoint>, p2: List<DrawingPoint>): Float {
-        return p1.zip(p2).map { (a, b) -> distance(a, b) }.average().toFloat()
     }
 
     private fun distance(p1: DrawingPoint, p2: DrawingPoint): Float {

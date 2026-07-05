@@ -310,7 +310,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showCharacterDeckOptions(name: String) {
-        val options = arrayOf("Add Character", "Export", "Delete")
+        val options = arrayOf("Add/Edit Characters", "Rename", "Export", "Delete")
         AlertDialog.Builder(this)
             .setTitle("Options for $name")
             .setItems(options) { _, which ->
@@ -320,15 +320,36 @@ class MainActivity : AppCompatActivity() {
                         intent.putExtra("DECK_NAME", name)
                         startActivity(intent)
                     }
-                    1 -> {
+                    1 -> showRenameCharDeckDialog(name)
+                    2 -> {
                         exportJson = charPrefs.getString(name, null)
                         if (exportJson != null) {
                             createDocumentLauncher.launch("${name}_chars.json")
                         }
                     }
-                    2 -> showDeleteCharDeckConfirmation(name)
+                    3 -> showDeleteCharDeckConfirmation(name)
                 }
             }
+            .show()
+    }
+
+    private fun showRenameCharDeckDialog(oldName: String) {
+        val nameInput = EditText(this).apply {
+            hint = "New Name"
+            setText(oldName)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Rename Character Deck")
+            .setView(nameInput)
+            .setPositiveButton("Rename") { _, _ ->
+                val newName = nameInput.text.toString().trim()
+                if (newName.isNotEmpty() && newName != oldName) {
+                    val json = charPrefs.getString(oldName, null)
+                    charPrefs.edit { remove(oldName).putString(newName, json) }
+                    loadDecksFromStorage()
+                }
+            }
+            .setNegativeButton("Cancel", null)
             .show()
     }
 

@@ -1,6 +1,7 @@
 package com.example.flashcards
 
 import android.os.Bundle
+import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -14,6 +15,7 @@ class AddCharacterActivity : AppCompatActivity() {
     private val gson = Gson()
     private var currentDeckName: String? = null
     private val characters = mutableListOf<CharacterData>()
+    private var currentIndex = -1 // -1 means new character mode
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,6 +28,10 @@ class AddCharacterActivity : AppCompatActivity() {
             loadDeck(intentDeckName)
         } else {
             showDeckSelectionDialog()
+        }
+
+        binding.btnHome.setOnClickListener {
+            finish()
         }
 
         binding.btnClear.setOnClickListener {
@@ -52,9 +58,34 @@ class AddCharacterActivity : AppCompatActivity() {
             saveCharacter()
         }
 
+        binding.btnDeleteChar.setOnClickListener {
+            deleteCurrentCharacter()
+        }
+
+        binding.btnPrevious.setOnClickListener {
+            if (currentIndex > 0) {
+                currentIndex--
+                displayCharacter(currentIndex)
+            } else if (currentIndex == -1 && characters.isNotEmpty()) {
+                currentIndex = characters.size - 1
+                displayCharacter(currentIndex)
+            }
+        }
+
+        binding.btnNext.setOnClickListener {
+            if (currentIndex != -1 && currentIndex < characters.size - 1) {
+                currentIndex++
+                displayCharacter(currentIndex)
+            } else {
+                switchToNewCharacterMode()
+            }
+        }
+
         binding.btnFinish.setOnClickListener {
             finish()
         }
+        
+        updateNavigationButtons()
     }
 
     private fun showDeckSelectionDialog() {
@@ -87,6 +118,7 @@ class AddCharacterActivity : AppCompatActivity() {
                 val name = input.text.toString().trim()
                 if (name.isNotEmpty()) {
                     currentDeckName = name
+                    switchToNewCharacterMode()
                 } else {
                     finish()
                 }
@@ -105,14 +137,61 @@ class AddCharacterActivity : AppCompatActivity() {
                 if (deck?.characters != null) {
                     characters.addAll(deck.characters)
                 }
-                if (characters.isNotEmpty()) {
-                    val lastWidth = characters.last().strokeWidth.toInt()
-                    binding.sbThickness.progress = lastWidth
-                    binding.drawingView.setStrokeWidth(lastWidth.toFloat())
-                }
             } catch (e: Exception) {
                 Toast.makeText(this, "Error loading deck", Toast.LENGTH_SHORT).show()
             }
+        }
+        
+        if (characters.isNotEmpty()) {
+            val editCharName = intent.getStringExtra("EDIT_CHAR_NAME")
+            if (editCharName != null) {
+                currentIndex = characters.indexOfFirst { it.name == editCharName }
+                if (currentIndex == -1) currentIndex = 0
+            } else {
+                currentIndex = 0
+            }
+            displayCharacter(currentIndex)
+        } else {
+            switchToNewCharacterMode()
+        }
+    }
+
+    private fun displayCharacter(index: Int) {
+        val char = characters[index]
+        binding.etCharName.setText(char.name)
+        binding.cbRecordStrokeOrder.isChecked = char.checkStrokeOrder
+        binding.cbRecordStrokeDirection.isChecked = char.checkStrokeDirection
+        binding.sbThickness.progress = char.strokeWidth.toInt()
+        binding.drawingView.setStrokeWidth(char.strokeWidth)
+        binding.drawingView.setStrokes(char.strokes)
+        
+        binding.tvCharCounter.text = "${index + 1} / ${characters.size}"
+        binding.btnDeleteChar.visibility = View.VISIBLE
+        updateNavigationButtons()
+    }
+
+    private fun switchToNewCharacterMode() {
+        currentIndex = -1
+        binding.etCharName.text.clear()
+        binding.drawingView.clear()
+        binding.tvCharCounter.text = "New Character"
+        binding.btnDeleteChar.visibility = View.GONE
+        
+        if (characters.isNotEmpty()) {
+            val lastWidth = characters.last().strokeWidth.toInt()
+            binding.sbThickness.progress = lastWidth
+            binding.drawingView.setStrokeWidth(lastWidth.toFloat())
+        }
+        updateNavigationButtons()
+    }
+
+    private fun updateNavigationButtons() {
+        binding.btnPrevious.isEnabled = currentIndex > 0 || (currentIndex == -1 && characters.isNotEmpty())
+        binding.btnNext.isEnabled = currentIndex != -1 || characters.isEmpty() // Allow "Next" to go to New mode
+        // If we are at the last character, Next goes to New mode.
+        // If we are in New mode, Next is disabled (or we could say it's always enabled if we want infinite new)
+        if (currentIndex == -1) {
+             binding.btnNext.isEnabled = false
         }
     }
 
@@ -138,21 +217,39 @@ class AddCharacterActivity : AppCompatActivity() {
             binding.cbRecordStrokeDirection.isChecked,
             strokeWidth
         )
-        characters.add(character)
+        
+        if (currentIndex == -1) {
+            characters.add(character)
+            currentIndex = characters.size - 1
+            Toast.makeText(this, "Character '$name' added!", Toast.LENGTH_SHORT).show()
+        } else {
+            characters[currentIndex] = character
+            Toast.makeText(this, "Character '$name' updated!", Toast.LENGTH_SHORT).show()
+        }
         
         saveDeckToStorage()
-        
-        Toast.makeText(this, "Character '$name' saved!", Toast.LENGTH_SHORT).show()
-        binding.etCharName.text.clear()
-        binding.drawingView.clear()
+        displayCharacter(currentIndex)
+    }
 
-        // If this is the first character, the thickness is already set by the user.
-        // For subsequent characters, we hide/disable the thickness slider to enforce consistency?
-        // Or just keep it as is, but the user asked for it to default to the same.
-        if (characters.size == 1) {
-            // We could disable it here if we want to enforce it.
-            // binding.sbThickness.isEnabled = false 
-        }
+    private fun deleteCurrentCharacter() {
+        if (currentIndex == -1) return
+        
+        AlertDialog.Builder(this)
+            .setTitle("Delete Character")
+            .setMessage("Are you sure you want to delete '${characters[currentIndex].name}'?")
+            .setPositiveButton("Delete") { _, _ ->
+                characters.removeAt(currentIndex)
+                saveDeckToStorage()
+                if (characters.isEmpty()) {
+                    switchToNewCharacterMode()
+                } else {
+                    if (currentIndex >= characters.size) currentIndex = characters.size - 1
+                    displayCharacter(currentIndex)
+                }
+                Toast.makeText(this, "Character deleted", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun saveDeckToStorage() {
